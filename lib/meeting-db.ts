@@ -118,3 +118,28 @@ export async function getMeetingById(
   if (rows.length === 0) return null;
   return hydrateMeeting(rows[0]);
 }
+
+/**
+ * Return the "current" meeting: the nearest upcoming meeting (today included),
+ * or — if no meetings are upcoming — the most recent past meeting.
+ * Returns null only when the meetings table is empty.
+ */
+export async function getCurrentMeeting(): Promise<SacramentMeeting | null> {
+  // One query, one row. Future meetings win; ties broken by earliest date.
+  // If no future meetings exist, falls back to the most recent past meeting.
+  const rows = await sql`
+    SELECT *
+    FROM meetings
+    ORDER BY
+      CASE WHEN meeting_date >= CURRENT_DATE THEN 0 ELSE 1 END,
+      CASE WHEN meeting_date >= CURRENT_DATE
+           THEN meeting_date
+           ELSE NULL
+      END ASC,
+      meeting_date DESC
+    LIMIT 1
+  `;
+
+  if (rows.length === 0) return null;
+  return hydrateMeeting(rows[0]);
+}

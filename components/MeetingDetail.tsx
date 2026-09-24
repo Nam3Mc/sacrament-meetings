@@ -29,11 +29,8 @@ function HymnLine({ label, hymn }: { label: string; hymn: { number: number; titl
 }
 
 export default function MeetingDetail({ meeting }: Props) {
-  const dateObj =
-    meeting.date instanceof Date
-      ? meeting.date
-      : new Date(`${meeting.date}T00:00:00`);
-
+  
+  const dateObj = new Date(`${meeting.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? 'Date TBD'
     : dateObj.toLocaleDateString('en-US', {

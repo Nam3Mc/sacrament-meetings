@@ -6,11 +6,8 @@ interface Props {
 }
 
 export default function MeetingCard({ meeting }: Props) {
-  const dateObj =
-    meeting.date instanceof Date
-      ? meeting.date
-      : new Date(`${meeting.date}T00:00:00`);
 
+  const dateObj = new Date(`${meeting.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? 'Date TBD'
     : dateObj.toLocaleDateString('en-US', {
