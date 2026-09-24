@@ -1,6 +1,6 @@
 'use client';
 
-import type { SacramentMeeting } from '@/lib/types';
+import type { Hymn, SacramentMeeting } from '@/lib/types';
 
 interface Props {
   meeting: SacramentMeeting;
@@ -13,7 +13,7 @@ const MEETING_TYPE_LABELS: Record<string, string> = {
   general_conference: 'General Conference',
 };
 
-function HymnLine({ label, hymn }: { label: string; hymn: { number: number; title: string } | null }) {
+function HymnLine({ label, hymn }: { label: string; hymn: Hymn | null }) {
   if (!hymn) {
     return (
       <p>
@@ -153,7 +153,7 @@ export default function MeetingDetail({ meeting }: Props) {
           Closing
         </h3>
         <div className="text-sm space-y-1">
-          <HymnLine label="Closing Hymn" hymn={meeting.closingHymn} />
+          <HymnLine label="Closing Hymn" hymn={meeting.closingHymn ?? null} />
           <p>
             <span className="font-semibold">Closing Prayer:</span>{' '}
             {meeting.closingPrayer}
