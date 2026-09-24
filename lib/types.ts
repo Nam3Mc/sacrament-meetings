@@ -4,6 +4,12 @@ export type MeetingType =
   | 'stake'
   | 'general';
 
+  export interface GetMeetingsOptions {
+  date?: string | null;
+  query?: string | null;
+  page?: number;
+}
+
 export interface Hymn {
   number: number;
   title: string;

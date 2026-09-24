@@ -17,6 +17,15 @@ export interface PaginatedMeetings {
   hasPrev: boolean;
 }
 
+export interface GetMeetingsOptions {
+  /** Exact meeting date, YYYY-MM-DD. */
+  date?: string | null;
+  /** Free-text search across presiding, conducting, speaker names, and meeting type. */
+  query?: string | null;
+  /** 1-based page number. */
+  page?: number;
+}
+
 /**
  * Normalize a raw `meetings` row (snake_case, possibly Date for meeting_date)
  * plus its related records into a SacramentMeeting.
@@ -66,32 +75,59 @@ async function hydrateMeeting(row: any): Promise<SacramentMeeting> {
 }
 
 /**
- * Get a page of meetings, optionally filtered by exact date (YYYY-MM-DD).
- * Page is 1-based. Page size is capped at PAGE_SIZE (10).
+ * Get a page of meetings.
+ *
+ * Filters (all optional, all combinable):
+ *   - date:  exact meeting_date match (YYYY-MM-DD)
+ *   - query: free text against presiding, conducting, speaker name, meeting type
+ *   - page:  1-based page number (default 1)
+ *
+ * Page size is capped at PAGE_SIZE (10).
  */
 export async function getMeetings(
-  date?: string | null,
-  page: number = 1
+  options: GetMeetingsOptions = {}
 ): Promise<PaginatedMeetings> {
+  const { date = null, query = null, page = 1 } = options;
   const safePage = Math.max(1, Math.floor(page));
   const offset = (safePage - 1) * PAGE_SIZE;
 
-  const rows = date
-    ? await sql`
-        SELECT * FROM meetings
-        WHERE meeting_date = ${date}
-        ORDER BY meeting_date DESC
-        LIMIT ${PAGE_SIZE} OFFSET ${offset}
-      `
-    : await sql`
-        SELECT * FROM meetings
-        ORDER BY meeting_date DESC
-        LIMIT ${PAGE_SIZE} OFFSET ${offset}
-      `;
+  const trimmed = query?.trim() ?? '';
+  const like = trimmed ? `%${trimmed}%` : null;
 
-  const countRows = date
-    ? await sql`SELECT COUNT(*)::int AS count FROM meetings WHERE meeting_date = ${date}`
-    : await sql`SELECT COUNT(*)::int AS count FROM meetings`;
+  // Note: the LEFT JOIN + DISTINCT combination is required because a meeting
+  // with multiple speakers would otherwise produce duplicate rows when a
+  // speaker name matches the query. COUNT(DISTINCT m.id) is the same story.
+  const rows = await sql`
+    SELECT DISTINCT m.*
+    FROM meetings m
+    LEFT JOIN speakers s ON s.meeting_id = m.id
+    WHERE (${date}::text IS NULL OR m.meeting_date = ${date}::date)
+      AND (
+        ${like}::text IS NULL
+        OR m.presiding    ILIKE ${like}
+        OR m.conducting   ILIKE ${like}
+        OR s.name         ILIKE ${like}
+        OR m.meeting_type ILIKE ${like}
+        OR REPLACE(m.meeting_type, '_', ' ') ILIKE ${like}
+      )
+    ORDER BY m.meeting_date DESC
+    LIMIT ${PAGE_SIZE} OFFSET ${offset}
+  `;
+
+  const countRows = await sql`
+    SELECT COUNT(DISTINCT m.id)::int AS count
+    FROM meetings m
+    LEFT JOIN speakers s ON s.meeting_id = m.id
+    WHERE (${date}::text IS NULL OR m.meeting_date = ${date}::date)
+      AND (
+        ${like}::text IS NULL
+        OR m.presiding    ILIKE ${like}
+        OR m.conducting   ILIKE ${like}
+        OR s.name         ILIKE ${like}
+        OR m.meeting_type ILIKE ${like}
+        OR REPLACE(m.meeting_type, '_', ' ') ILIKE ${like}
+      )
+  `;
 
   const total = countRows[0]?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
