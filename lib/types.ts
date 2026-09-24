@@ -39,12 +39,12 @@ export interface SacramentMeeting {
   presiding: string;
   conducting: string;
   announcements?: string[];
-  openingHymn: Hymn;
+  openingHymn: Hymn | null;
   openingPrayer: string;
   wardBusiness: WardBusinessItem[];
   stakeBusiness: boolean;
-  sacramentHymn: Hymn;
+  sacramentHymn: Hymn | null;
   speakers: SpeakerItem[];
-  closingHymn: Hymn;
+  closingHymn?: Hymn | null;
   closingPrayer: string;
 }
