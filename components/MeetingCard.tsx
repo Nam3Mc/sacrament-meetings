@@ -6,13 +6,21 @@ interface Props {
 }
 
 export default function MeetingCard({ meeting }: Props) {
-  const dateObj = new Date(meeting.date + 'T00:00:00');
-  const formattedDate = dateObj.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const dateObj =
+    meeting.date instanceof Date
+      ? meeting.date
+      : new Date(`${meeting.date}T00:00:00`);
+
+  const formattedDate = isNaN(dateObj.getTime())
+    ? 'Date TBD'
+    : dateObj.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+
+  const speakerCount = meeting.speakers?.length ?? 0;
 
   return (
     <Link
@@ -29,7 +37,7 @@ export default function MeetingCard({ meeting }: Props) {
           </p>
         </div>
         <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-          {meeting.speakers.length} speaker{meeting.speakers.length !== 1 && 's'}
+          {speakerCount} speaker{speakerCount !== 1 ? 's' : ''}
         </span>
       </div>
       <p className="mt-2 text-sm text-gray-600">

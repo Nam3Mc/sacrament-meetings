@@ -9,13 +9,26 @@ export interface Hymn {
   title: string;
 }
 
+export interface AnnouncementItem {
+  id: number;
+  meetingId: number;
+  sortOrder: number;
+  body: string;
+}
+
 export interface SpeakerItem {
+  id: number;
+  meetingId: number;
+  sortOrder: number;
   name: string;
   topic: string;
   type: 'speaker' | 'musical-number';
 }
 
 export interface WardBusinessItem {
+  id: number;
+  meetingId: number;
+  sortOrder: number;
   description: string;
 }
 

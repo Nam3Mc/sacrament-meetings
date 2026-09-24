@@ -11,7 +11,7 @@ export default async function MeetingDetailPage({
 
   if (!/^\d+$/.test(id)) notFound();
 
-  const meeting = getMeetingById(Number(id));
+  const meeting = await getMeetingById(Number(id));   // ✅ await
   if (!meeting) notFound();
 
   return <MeetingDetail meeting={meeting} />;

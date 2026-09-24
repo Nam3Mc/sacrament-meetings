@@ -6,14 +6,49 @@ interface Props {
   meeting: SacramentMeeting;
 }
 
+const MEETING_TYPE_LABELS: Record<string, string> = {
+  regular: 'Regular',
+  stake_conference: 'Stake Conference',
+  fast_and_testimony: 'Fast & Testimony',
+  general_conference: 'General Conference',
+};
+
+function HymnLine({ label, hymn }: { label: string; hymn: { number: number; title: string } | null }) {
+  if (!hymn) {
+    return (
+      <p>
+        <span className="font-semibold">{label}:</span> <span className="text-gray-400">TBD</span>
+      </p>
+    );
+  }
+  return (
+    <p>
+      <span className="font-semibold">{label}:</span> #{hymn.number} – {hymn.title}
+    </p>
+  );
+}
+
 export default function MeetingDetail({ meeting }: Props) {
-  const dateObj = new Date(meeting.date + 'T00:00:00');
-  const formattedDate = dateObj.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const dateObj =
+    meeting.date instanceof Date
+      ? meeting.date
+      : new Date(`${meeting.date}T00:00:00`);
+
+  const formattedDate = isNaN(dateObj.getTime())
+    ? 'Date TBD'
+    : dateObj.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+
+  const meetingTypeLabel =
+    MEETING_TYPE_LABELS[meeting.meetingType] ?? meeting.meetingType;
+
+  const announcements = meeting.announcements ?? [];
+  const wardBusiness = meeting.wardBusiness ?? [];
+  const speakers = meeting.speakers ?? [];
 
   return (
     <article className="bg-white border border-gray-200 rounded-lg p-6 print:border-0 print:p-0">
@@ -31,9 +66,7 @@ export default function MeetingDetail({ meeting }: Props) {
           Sacrament Meeting Program
         </h2>
         <p className="text-gray-600">{formattedDate}</p>
-        <p className="text-sm text-gray-500 capitalize">
-          {meeting.meetingType} meeting
-        </p>
+        <p className="text-sm text-gray-500">{meetingTypeLabel} meeting</p>
       </header>
 
       <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
@@ -47,13 +80,13 @@ export default function MeetingDetail({ meeting }: Props) {
         </div>
       </div>
 
-      {meeting.announcements && meeting.announcements.length > 0 && (
+      {announcements.length > 0 && (
         <section className="mb-6">
           <h3 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">
             Announcements
           </h3>
           <ul className="list-disc list-inside text-sm space-y-1">
-            {meeting.announcements.map((a, i) => (
+            {announcements.map((a, i) => (
               <li key={i}>{a}</li>
             ))}
           </ul>
@@ -65,10 +98,7 @@ export default function MeetingDetail({ meeting }: Props) {
           Opening
         </h3>
         <div className="text-sm space-y-1">
-          <p>
-            <span className="font-semibold">Opening Hymn:</span>{' '}
-            #{meeting.openingHymn.number} – {meeting.openingHymn.title}
-          </p>
+          <HymnLine label="Opening Hymn" hymn={meeting.openingHymn} />
           <p>
             <span className="font-semibold">Opening Prayer:</span>{' '}
             {meeting.openingPrayer}
@@ -76,13 +106,13 @@ export default function MeetingDetail({ meeting }: Props) {
         </div>
       </section>
 
-      {(meeting.wardBusiness.length > 0 || meeting.stakeBusiness) && (
+      {(wardBusiness.length > 0 || meeting.stakeBusiness) && (
         <section className="mb-6">
           <h3 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">
             Ward &amp; Stake Business
           </h3>
           <ul className="list-disc list-inside text-sm space-y-1">
-            {meeting.wardBusiness.map((item, i) => (
+            {wardBusiness.map((item, i) => (
               <li key={i}>{item.description}</li>
             ))}
             {meeting.stakeBusiness && <li>Stake Business</li>}
@@ -94,19 +124,18 @@ export default function MeetingDetail({ meeting }: Props) {
         <h3 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">
           Sacrament
         </h3>
-        <p className="text-sm">
-          <span className="font-semibold">Sacrament Hymn:</span> #
-          {meeting.sacramentHymn.number} – {meeting.sacramentHymn.title}
-        </p>
+        <div className="text-sm space-y-1">
+          <HymnLine label="Sacrament Hymn" hymn={meeting.sacramentHymn} />
+        </div>
       </section>
 
-      {meeting.speakers.length > 0 && (
+      {speakers.length > 0 && (
         <section className="mb-6">
           <h3 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">
             Speakers &amp; Musical Numbers
           </h3>
           <ul className="text-sm space-y-2">
-            {meeting.speakers.map((s, i) => (
+            {speakers.map((s, i) => (
               <li key={i}>
                 {s.type === 'musical-number' ? (
                   <span className="italic">{s.name} (Musical Number)</span>
@@ -127,10 +156,7 @@ export default function MeetingDetail({ meeting }: Props) {
           Closing
         </h3>
         <div className="text-sm space-y-1">
-          <p>
-            <span className="font-semibold">Closing Hymn:</span> #
-            {meeting.closingHymn.number} – {meeting.closingHymn.title}
-          </p>
+          <HymnLine label="Closing Hymn" hymn={meeting.closingHymn} />
           <p>
             <span className="font-semibold">Closing Prayer:</span>{' '}
             {meeting.closingPrayer}

@@ -1,126 +1,120 @@
 import type { SacramentMeeting } from './types';
+import { sql } from './db-connection';
+import { getHymnById } from './hyms-db';
+import { getSpeakersByMeetingId } from './speakers-db';
+import { getAnnouncementByMeetingId } from './announcements-db';
+import { getWardBusinessByMeetingId } from './wardBusinesess-db';
 
-const meetings: SacramentMeeting[] = [
-  {
-    id: 6,
-    date: '2026-09-17',
-    meetingType: 'regular',
-    presiding: 'Bishop Smith',
-    conducting: 'Brother Jones',
-    openingHymn: { number: 2, title: 'The Spirit of God' },
-    openingPrayer: 'Sister Williams',
-    wardBusiness: [{ description: 'Sustaining of new Primary president' }],
-    stakeBusiness: false,
-    sacramentHymn: { number: 169, title: 'In Remembrance of Thy Suffering' },
-    speakers: [
-      { name: 'Sister Brown', topic: 'Faith in Jesus Christ', type: 'speaker' },
-      { name: 'Youth Choir', topic: '', type: 'musical-number' },
-    ],
-    closingHymn: { number: 31, title: 'O God, Our Help in Ages Past' },
-    closingPrayer: 'Brother Davis',
-    announcements: ['Ward temple night: May 10'],
-  },
-  {
-    id: 1,
-    date: '2026-05-03',
-    meetingType: 'regular',
-    presiding: 'Bishop Smith',
-    conducting: 'Brother Jones',
-    openingHymn: { number: 2, title: 'The Spirit of God' },
-    openingPrayer: 'Sister Williams',
-    wardBusiness: [{ description: 'Sustaining of new Primary president' }],
-    stakeBusiness: false,
-    sacramentHymn: { number: 169, title: 'In Remembrance of Thy Suffering' },
-    speakers: [
-      { name: 'Sister Brown', topic: 'Faith in Jesus Christ', type: 'speaker' },
-      { name: 'Youth Choir', topic: '', type: 'musical-number' },
-    ],
-    closingHymn: { number: 31, title: 'O God, Our Help in Ages Past' },
-    closingPrayer: 'Brother Davis',
-    announcements: ['Ward temple night: May 10'],
-  },
-  {
-    id: 2,
-    date: '2026-05-10',
-    meetingType: 'testimony',
-    presiding: 'Bishop Smith',
-    conducting: 'Brother Jones',
-    openingHymn: { number: 85, title: 'How Firm a Foundation' },
-    openingPrayer: 'Brother Thompson',
-    wardBusiness: [],
-    stakeBusiness: false,
-    sacramentHymn: { number: 172, title: 'In Humility, Our Savior' },
-    speakers: [
-      { name: 'Congregation', topic: 'Testimonies', type: 'speaker' },
-    ],
-    closingHymn: { number: 152, title: 'God Be with You Till We Meet Again' },
-    closingPrayer: 'Sister Garcia',
-    announcements: ['Fast Sunday - no ward business'],
-  },
-  {
-    id: 3,
-    date: '2026-05-17',
-    meetingType: 'regular',
-    presiding: 'Bishop Smith',
-    conducting: 'Brother Lee',
-    openingHymn: { number: 30, title: 'Come, Come, Ye Saints' },
-    openingPrayer: 'Sister Clark',
-    wardBusiness: [
-      { description: 'Release of Elder Johnson from mission' },
-      { description: 'Sustaining of new Elders Quorum counselor' },
-    ],
-    stakeBusiness: true,
-    sacramentHymn: { number: 174, title: 'While of These Emblems We Partake' },
-    speakers: [
-      { name: 'Brother Adams', topic: 'The Atonement of Jesus Christ', type: 'speaker' },
-      { name: 'Sister Nelson', topic: 'Charity Never Faileth', type: 'speaker' },
-    ],
-    closingHymn: { number: 27, title: 'Praise to the Man' },
-    closingPrayer: 'Brother Mitchell',
-  },
-  {
-    id: 4,
-    date: '2026-05-24',
-    meetingType: 'stake',
-    presiding: 'Stake President Young',
-    conducting: 'Brother Jones',
-    openingHymn: { number: 5, title: 'High on the Mountain Top' },
-    openingPrayer: 'Brother Peterson',
-    wardBusiness: [],
-    stakeBusiness: true,
-    sacramentHymn: { number: 170, title: 'God, Our Father, Hear Us Pray' },
-    speakers: [
-      { name: 'Stake President Young', topic: 'Stake Conference', type: 'speaker' },
-    ],
-    closingHymn: { number: 3, title: 'Now Let Us Rejoice' },
-    closingPrayer: 'Sister Robinson',
-    announcements: ['Stake Conference - no sacrament meeting'],
-  },
-  {
-    id: 5,
-    date: '2026-05-31',
-    meetingType: 'general',
-    presiding: 'Bishop Smith',
-    conducting: 'Brother Jones',
-    openingHymn: { number: 19, title: 'We Thank Thee, O God, for a Prophet' },
-    openingPrayer: 'Sister Hall',
-    wardBusiness: [],
-    stakeBusiness: false,
-    sacramentHymn: { number: 175, title: 'O God, the Eternal Father' },
-    speakers: [
-      { name: 'Brother Wright', topic: 'Following the Prophet', type: 'speaker' },
-    ],
-    closingHymn: { number: 10, title: 'I Know That My Redeemer Lives' },
-    closingPrayer: 'Brother Young',
-    announcements: ['General Conference - no sacrament meeting'],
-  },
-];
+export const PAGE_SIZE = 10;
 
-export function getMeetings(date?: string | null): SacramentMeeting[] {
-  if (date) return meetings.filter((m) => m.date === date);
-  return meetings;
+export interface PaginatedMeetings {
+  meetings: SacramentMeeting[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
-export function getMeetingById(id: number): SacramentMeeting | null {
-  return meetings.find((m) => m.id === id) ?? null;
+/**
+ * Normalize a raw `meetings` row (snake_case, possibly Date for meeting_date)
+ * plus its related records into a SacramentMeeting.
+ */
+async function hydrateMeeting(row: any): Promise<SacramentMeeting> {
+  const meetingId = row.id;
+
+  const [
+    speakers,
+    announcementItems,
+    wardBusiness,
+    openingHymn,
+    sacramentHymn,
+    closingHymn,
+  ] = await Promise.all([
+    getSpeakersByMeetingId(meetingId),
+    getAnnouncementByMeetingId(meetingId),
+    getWardBusinessByMeetingId(meetingId),
+    row.opening_hymn ? getHymnById(row.opening_hymn) : null,
+    row.sacrament_hymn ? getHymnById(row.sacrament_hymn) : null,
+    row.closing_hymn ? getHymnById(row.closing_hymn) : null,
+  ]);
+
+  // meeting_date may come back as Date or string depending on the driver.
+  const date =
+    row.meeting_date instanceof Date
+      ? row.meeting_date.toISOString().slice(0, 10)
+      : String(row.meeting_date);
+
+  return {
+    id: row.id,
+    date,
+    meetingType: row.meeting_type as SacramentMeeting['meetingType'],
+    presiding: row.presiding,
+    conducting: row.conducting,
+    openingHymn,
+    openingPrayer: row.opening_prayer,
+    wardBusiness: wardBusiness ?? [],
+    stakeBusiness: row.stake_business ?? false,
+    sacramentHymn,
+    speakers: speakers ?? [],
+    closingHymn,
+    closingPrayer: row.closing_prayer,
+    // SacramentMeeting.announcements is string[], so map row.body
+    announcements: (announcementItems ?? []).map((a) => a.body),
+  };
+}
+
+/**
+ * Get a page of meetings, optionally filtered by exact date (YYYY-MM-DD).
+ * Page is 1-based. Page size is capped at PAGE_SIZE (10).
+ */
+export async function getMeetings(
+  date?: string | null,
+  page: number = 1
+): Promise<PaginatedMeetings> {
+  const safePage = Math.max(1, Math.floor(page));
+  const offset = (safePage - 1) * PAGE_SIZE;
+
+  const rows = date
+    ? await sql`
+        SELECT * FROM meetings
+        WHERE meeting_date = ${date}
+        ORDER BY meeting_date DESC
+        LIMIT ${PAGE_SIZE} OFFSET ${offset}
+      `
+    : await sql`
+        SELECT * FROM meetings
+        ORDER BY meeting_date DESC
+        LIMIT ${PAGE_SIZE} OFFSET ${offset}
+      `;
+
+  const countRows = date
+    ? await sql`SELECT COUNT(*)::int AS count FROM meetings WHERE meeting_date = ${date}`
+    : await sql`SELECT COUNT(*)::int AS count FROM meetings`;
+
+  const total = countRows[0]?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const meetings = await Promise.all(rows.map(hydrateMeeting));
+
+  return {
+    meetings,
+    page: safePage,
+    pageSize: PAGE_SIZE,
+    total,
+    totalPages,
+    hasNext: safePage < totalPages,
+    hasPrev: safePage > 1,
+  };
+}
+
+/**
+ * Get a single meeting by id, or null if not found.
+ */
+export async function getMeetingById(
+  id: number
+): Promise<SacramentMeeting | null> {
+  const rows = await sql`SELECT * FROM meetings WHERE id = ${id}`;
+  if (rows.length === 0) return null;
+  return hydrateMeeting(rows[0]);
 }
