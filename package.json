@@ -13,7 +13,8 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "use-debounce": "^10.1.1"
+    "use-debounce": "^10.1.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",

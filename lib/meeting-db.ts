@@ -1,11 +1,23 @@
+'use server'
+
 import type { SacramentMeeting } from './types';
 import { sql } from './db-connection';
 import { getHymnById } from './hyms-db';
-import { getSpeakersByMeetingId } from './speakers-db';
-import { getAnnouncementByMeetingId } from './announcements-db';
-import { getWardBusinessByMeetingId } from './wardBusinesess-db';
+import { deleteSpeakersByMeetingId, getSpeakersByMeetingId, replaceSpeakers } from './speakers-db';
+import { deleteAnnouncementsByMeetingId, getAnnouncementByMeetingId, replaceAnnouncements } from './announcements-db';
+import { deleteWardBusinessByMeetingId, getWardBusinessByMeetingId, replaceWardBusiness } from './wardBusinesess-db';
+import { AnnouncementSchema, MeetingFormSchema, MeetingInput, parseJsonArray, SpeakerSchema, WardBusinessSchema } from './schemas';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
-export const PAGE_SIZE = 10;
+export interface State {
+  message: string | null;
+  errors: Record<string, string[]>;
+}
+
+export const initialState: State = { message: null, errors: {} };
+
+const PAGE_SIZE = 10;
 
 export interface PaginatedMeetings {
   meetings: SacramentMeeting[];
@@ -18,18 +30,15 @@ export interface PaginatedMeetings {
 }
 
 export interface GetMeetingsOptions {
-  /** Exact meeting date, YYYY-MM-DD. */
   date?: string | null;
-  /** Free-text search across presiding, conducting, speaker names, and meeting type. */
   query?: string | null;
-  /** 1-based page number. */
   page?: number;
 }
 
-/**
- * Normalize a raw `meetings` row (snake_case, possibly Date for meeting_date)
- * plus its related records into a SacramentMeeting.
- */
+/* ------------------------------------------------------------------ */
+/* Reads                                                               */
+/* ------------------------------------------------------------------ */
+
 async function hydrateMeeting(row: any): Promise<SacramentMeeting> {
   const meetingId = row.id;
 
@@ -49,7 +58,6 @@ async function hydrateMeeting(row: any): Promise<SacramentMeeting> {
     row.closing_hymn ? getHymnById(row.closing_hymn) : null,
   ]);
 
-  // meeting_date may come back as Date or string depending on the driver.
   const date =
     row.meeting_date instanceof Date
       ? row.meeting_date.toISOString().slice(0, 10)
@@ -69,113 +77,289 @@ async function hydrateMeeting(row: any): Promise<SacramentMeeting> {
     speakers: speakers ?? [],
     closingHymn,
     closingPrayer: row.closing_prayer,
-    // SacramentMeeting.announcements is string[], so map row.body
     announcements: (announcementItems ?? []).map((a) => a.body),
   };
 }
 
-/**
- * Get a page of meetings.
- *
- * Filters (all optional, all combinable):
- *   - date:  exact meeting_date match (YYYY-MM-DD)
- *   - query: free text against presiding, conducting, speaker name, meeting type
- *   - page:  1-based page number (default 1)
- *
- * Page size is capped at PAGE_SIZE (10).
- */
 export async function getMeetings(
   options: GetMeetingsOptions = {}
-): Promise<PaginatedMeetings> {
-  const { date = null, query = null, page = 1 } = options;
-  const safePage = Math.max(1, Math.floor(page));
-  const offset = (safePage - 1) * PAGE_SIZE;
+): Promise<PaginatedMeetings | null> {
+  try {
+    const { date = null, query = null, page = 1 } = options;
+    const safePage = Math.max(1, Math.floor(page));
+    const offset = (safePage - 1) * PAGE_SIZE;
 
-  const trimmed = query?.trim() ?? '';
-  const like = trimmed ? `%${trimmed}%` : null;
+    const trimmed = query?.trim() ?? '';
+    const like = trimmed ? `%${trimmed}%` : null;
 
-  // Note: the LEFT JOIN + DISTINCT combination is required because a meeting
-  // with multiple speakers would otherwise produce duplicate rows when a
-  // speaker name matches the query. COUNT(DISTINCT m.id) is the same story.
-  const rows = await sql`
-    SELECT DISTINCT m.*
-    FROM meetings m
-    LEFT JOIN speakers s ON s.meeting_id = m.id
-    WHERE (${date}::text IS NULL OR m.meeting_date = ${date}::date)
-      AND (
-        ${like}::text IS NULL
-        OR m.presiding    ILIKE ${like}
-        OR m.conducting   ILIKE ${like}
-        OR s.name         ILIKE ${like}
-        OR m.meeting_type ILIKE ${like}
-        OR REPLACE(m.meeting_type, '_', ' ') ILIKE ${like}
-      )
-    ORDER BY m.meeting_date DESC
-    LIMIT ${PAGE_SIZE} OFFSET ${offset}
-  `;
+    const rows = await sql`
+      SELECT DISTINCT m.*
+      FROM meetings m
+      LEFT JOIN speakers s ON s.meeting_id = m.id
+      WHERE (${date}::text IS NULL OR m.meeting_date = ${date}::date)
+        AND (
+          ${like}::text IS NULL
+          OR m.presiding    ILIKE ${like}
+          OR m.conducting   ILIKE ${like}
+          OR s.name         ILIKE ${like}
+          OR m.meeting_type ILIKE ${like}
+          OR REPLACE(m.meeting_type, '_', ' ') ILIKE ${like}
+        )
+      ORDER BY m.meeting_date DESC
+      LIMIT ${PAGE_SIZE} OFFSET ${offset}
+    `;
 
-  const countRows = await sql`
-    SELECT COUNT(DISTINCT m.id)::int AS count
-    FROM meetings m
-    LEFT JOIN speakers s ON s.meeting_id = m.id
-    WHERE (${date}::text IS NULL OR m.meeting_date = ${date}::date)
-      AND (
-        ${like}::text IS NULL
-        OR m.presiding    ILIKE ${like}
-        OR m.conducting   ILIKE ${like}
-        OR s.name         ILIKE ${like}
-        OR m.meeting_type ILIKE ${like}
-        OR REPLACE(m.meeting_type, '_', ' ') ILIKE ${like}
-      )
-  `;
+    const countRows = await sql`
+      SELECT COUNT(DISTINCT m.id)::int AS count
+      FROM meetings m
+      LEFT JOIN speakers s ON s.meeting_id = m.id
+      WHERE (${date}::text IS NULL OR m.meeting_date = ${date}::date)
+        AND (
+          ${like}::text IS NULL
+          OR m.presiding    ILIKE ${like}
+          OR m.conducting   ILIKE ${like}
+          OR s.name         ILIKE ${like}
+          OR m.meeting_type ILIKE ${like}
+          OR REPLACE(m.meeting_type, '_', ' ') ILIKE ${like}
+        )
+    `;
 
-  const total = countRows[0]?.count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const meetings = await Promise.all(rows.map(hydrateMeeting));
+    const total = countRows[0]?.count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const meetings = await Promise.all(rows.map(hydrateMeeting));
 
-  return {
-    meetings,
-    page: safePage,
-    pageSize: PAGE_SIZE,
-    total,
-    totalPages,
-    hasNext: safePage < totalPages,
-    hasPrev: safePage > 1,
-  };
+    return {
+      meetings,
+      page: safePage,
+      pageSize: PAGE_SIZE,
+      total,
+      totalPages,
+      hasNext: safePage < totalPages,
+      hasPrev: safePage > 1,
+    };
+  } catch (error) {
+    console.error('Failed to fetch meetings:', error);
+    return null;
+  }
 }
 
-/**
- * Get a single meeting by id, or null if not found.
- */
 export async function getMeetingById(
   id: number
 ): Promise<SacramentMeeting | null> {
-  const rows = await sql`SELECT * FROM meetings WHERE id = ${id}`;
-  if (rows.length === 0) return null;
-  return hydrateMeeting(rows[0]);
+  try {
+    const rows = await sql`SELECT * FROM meetings WHERE id = ${id}`;
+    if (rows.length === 0) return null;
+    return hydrateMeeting(rows[0]);
+  } catch (error) {
+    console.error(`Failed to fetch meeting ${id}:`, error);
+    return null;
+  }
 }
 
-/**
- * Return the "current" meeting: the nearest upcoming meeting (today included),
- * or — if no meetings are upcoming — the most recent past meeting.
- * Returns null only when the meetings table is empty.
- */
 export async function getCurrentMeeting(): Promise<SacramentMeeting | null> {
-  // One query, one row. Future meetings win; ties broken by earliest date.
-  // If no future meetings exist, falls back to the most recent past meeting.
-  const rows = await sql`
-    SELECT *
-    FROM meetings
-    ORDER BY
-      CASE WHEN meeting_date >= CURRENT_DATE THEN 0 ELSE 1 END,
-      CASE WHEN meeting_date >= CURRENT_DATE
-           THEN meeting_date
-           ELSE NULL
-      END ASC,
-      meeting_date DESC
-    LIMIT 1
-  `;
+  try {
+    const rows = await sql`
+      SELECT *
+      FROM meetings
+      ORDER BY
+        CASE WHEN meeting_date >= CURRENT_DATE THEN 0 ELSE 1 END,
+        CASE WHEN meeting_date >= CURRENT_DATE
+             THEN meeting_date
+             ELSE NULL
+        END ASC,
+        meeting_date DESC
+      LIMIT 1
+    `;
 
-  if (rows.length === 0) return null;
-  return hydrateMeeting(rows[0]);
+    if (rows.length === 0) return null;
+    return hydrateMeeting(rows[0]);
+  } catch (error) {
+    console.error('Failed to fetch current meeting:', error);
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* FormData → validated input                                          */
+/* ------------------------------------------------------------------ */
+
+type ParseResult =
+  | { ok: true; data: MeetingInput }
+  | { ok: false; state: State };
+
+function parseMeetingForm(formData: FormData): ParseResult {
+  let speakers, announcements, wardBusiness;
+
+  try {
+    speakers = parseJsonArray(formData.get('speakers'), SpeakerSchema);
+    announcements = parseJsonArray(formData.get('announcements'), AnnouncementSchema);
+    wardBusiness = parseJsonArray(formData.get('ward_business'), WardBusinessSchema);
+  } catch (error) {
+    console.error('Failed to parse list fields:', error);
+    return {
+      ok: false,
+      state: {
+        message: 'One of the list fields contains invalid data.',
+        errors: {},
+      },
+    };
+  }
+
+  const raw = {
+    meeting_date: formData.get('meeting_date'),
+    meeting_type: formData.get('meeting_type'),
+    presiding: formData.get('presiding'),
+    conducting: formData.get('conducting'),
+    opening_hymn: formData.get('opening_hymn'),
+    opening_prayer: formData.get('opening_prayer'),
+    stake_business: formData.get('stake_business') === 'on',
+    sacrament_hymn: formData.get('sacrament_hymn'),
+    closing_hymn: formData.get('closing_hymn'),
+    closing_prayer: formData.get('closing_prayer'),
+    speakers,
+    announcements,
+    ward_business: wardBusiness,
+  };
+
+  const parsed = MeetingFormSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      state: {
+        message: 'Please fix the errors below.',
+        errors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+      },
+    };
+  }
+
+  return { ok: true, data: parsed.data };
+}
+
+/* ------------------------------------------------------------------ */
+/* CREATE                                                              */
+/* ------------------------------------------------------------------ */
+
+export async function createMeeting(
+  prevState: State,
+  formData: FormData
+): Promise<State> {
+  const parsed = parseMeetingForm(formData);
+  if (!parsed.ok) return parsed.state;
+
+  const data = parsed.data;
+  let meetingId: number;
+
+  try {
+    const rows = await sql`
+      INSERT INTO meetings (
+        meeting_date, meeting_type, presiding, conducting,
+        opening_hymn, opening_prayer, stake_business,
+        sacrament_hymn, closing_hymn, closing_prayer
+      ) VALUES (
+        ${data.meeting_date}::date, ${data.meeting_type}, ${data.presiding}, ${data.conducting},
+        ${data.opening_hymn}, ${data.opening_prayer}, ${data.stake_business},
+        ${data.sacrament_hymn}, ${data.closing_hymn}, ${data.closing_prayer}
+      )
+      RETURNING id
+    `;
+    meetingId = rows[0].id as number;
+  } catch (error) {
+    console.error('Failed to insert meeting:', error);
+    return {
+      message: 'Could not create the meeting. Please try again.',
+      errors: {},
+    };
+  }
+
+  // Child tables — each returns State.
+  const speakersState = await replaceSpeakers(meetingId, data.speakers);
+  if (speakersState.message) return speakersState;
+
+  const announcementsState = await replaceAnnouncements(meetingId, data.announcements);
+  if (announcementsState.message) return announcementsState;
+
+  const wardBusinessState = await replaceWardBusiness(meetingId, data.ward_business);
+  if (wardBusinessState.message) return wardBusinessState;
+
+  revalidatePath('/meetings');
+  redirect('/meetings');
+}
+
+/* ------------------------------------------------------------------ */
+/* UPDATE                                                              */
+/* ------------------------------------------------------------------ */
+
+export async function updateMeeting(
+  id: number,
+  prevState: State,
+  formData: FormData
+): Promise<State> {
+  const parsed = parseMeetingForm(formData);
+  if (!parsed.ok) return parsed.state;
+
+  const data = parsed.data;
+
+  try {
+    await sql`
+      UPDATE meetings SET
+        meeting_date   = ${data.meeting_date}::date,
+        meeting_type   = ${data.meeting_type},
+        presiding      = ${data.presiding},
+        conducting     = ${data.conducting},
+        opening_hymn   = ${data.opening_hymn},
+        opening_prayer = ${data.opening_prayer},
+        stake_business = ${data.stake_business},
+        sacrament_hymn = ${data.sacrament_hymn},
+        closing_hymn   = ${data.closing_hymn},
+        closing_prayer = ${data.closing_prayer}
+      WHERE id = ${id}
+    `;
+  } catch (error) {
+    console.error(`Failed to update meeting ${id}:`, error);
+    return {
+      message: 'Could not update the meeting. Please try again.',
+      errors: {},
+    };
+  }
+
+  const speakersState = await replaceSpeakers(id, data.speakers);
+  if (speakersState.message) return speakersState;
+
+  const announcementsState = await replaceAnnouncements(id, data.announcements);
+  if (announcementsState.message) return announcementsState;
+
+  const wardBusinessState = await replaceWardBusiness(id, data.ward_business);
+  if (wardBusinessState.message) return wardBusinessState;
+
+  revalidatePath('/meetings');
+  revalidatePath(`/meetings/${id}/edit`);
+  redirect('/meetings');
+}
+
+/* ------------------------------------------------------------------ */
+/* DELETE                                                              */
+/* ------------------------------------------------------------------ */
+
+export async function deleteMeeting(id: number): Promise<State> {
+  try {
+    const speakersState = await deleteSpeakersByMeetingId(id);
+    if (speakersState.message) return speakersState;
+
+    const announcementsState = await deleteAnnouncementsByMeetingId(id);
+    if (announcementsState.message) return announcementsState;
+
+    const wardBusinessState = await deleteWardBusinessByMeetingId(id);
+    if (wardBusinessState.message) return wardBusinessState;
+
+    await sql`DELETE FROM meetings WHERE id = ${id}`;
+  } catch (error) {
+    console.error(`Failed to delete meeting ${id}:`, error);
+    return {
+      message: 'Could not delete the meeting. Please try again.',
+      errors: {},
+    };
+  }
+
+  revalidatePath('/meetings');
+  return { message: null, errors: {} };
 }

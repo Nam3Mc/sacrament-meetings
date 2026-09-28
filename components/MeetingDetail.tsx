@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { Hymn, SacramentMeeting } from '@/lib/types';
 
 interface Props {
@@ -17,7 +18,8 @@ function HymnLine({ label, hymn }: { label: string; hymn: Hymn | null }) {
   if (!hymn) {
     return (
       <p>
-        <span className="font-semibold">{label}:</span> <span className="text-gray-400">TBD</span>
+        <span className="font-semibold">{label}:</span>{' '}
+        <span className="text-gray-400">TBD</span>
       </p>
     );
   }
@@ -29,7 +31,6 @@ function HymnLine({ label, hymn }: { label: string; hymn: Hymn | null }) {
 }
 
 export default function MeetingDetail({ meeting }: Props) {
-  
   const dateObj = new Date(`${meeting.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? 'Date TBD'
@@ -49,13 +50,21 @@ export default function MeetingDetail({ meeting }: Props) {
 
   return (
     <article className="bg-white border border-gray-200 rounded-lg p-6 print:border-0 print:p-0">
-      <div className="print:hidden mb-4">
+      {/* Action bar — hidden when printing */}
+      <div className="print:hidden mb-4 flex items-center gap-2">
         <button
           onClick={() => window.print()}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
         >
           Print Program
         </button>
+
+        <Link
+          href={`/meetings/${meeting.id}/edit`}
+          className="border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50 transition-colors"
+        >
+          Edit Meeting
+        </Link>
       </div>
 
       <header className="text-center mb-6">
