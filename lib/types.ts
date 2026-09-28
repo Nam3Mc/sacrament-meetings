@@ -54,3 +54,28 @@ export interface SacramentMeeting {
   closingHymn?: Hymn | null;
   closingPrayer: string;
 }
+
+export interface State {
+  message: string | null;
+  errors: Record<string, string[]>;
+}
+
+export const initialState: State = { message: null, errors: {} };
+
+export const PAGE_SIZE = 10;
+
+export interface PaginatedMeetings {
+  meetings: SacramentMeeting[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface GetMeetingsOptions {
+  date?: string | null;
+  query?: string | null;
+  page?: number;
+}

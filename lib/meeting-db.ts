@@ -1,6 +1,6 @@
 'use server'
 
-import type { SacramentMeeting } from './types';
+import { PAGE_SIZE, State, type GetMeetingsOptions, type PaginatedMeetings, type SacramentMeeting } from './types';
 import { sql } from './db-connection';
 import { getHymnById } from './hyms-db';
 import { deleteSpeakersByMeetingId, getSpeakersByMeetingId, replaceSpeakers } from './speakers-db';
@@ -10,30 +10,30 @@ import { AnnouncementSchema, MeetingFormSchema, MeetingInput, parseJsonArray, Sp
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-export interface State {
-  message: string | null;
-  errors: Record<string, string[]>;
-}
-
-export const initialState: State = { message: null, errors: {} };
-
-const PAGE_SIZE = 10;
-
-export interface PaginatedMeetings {
-  meetings: SacramentMeeting[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
-export interface GetMeetingsOptions {
-  date?: string | null;
-  query?: string | null;
-  page?: number;
-}
+// export interface State {
+  // message: string | null;
+  // errors: Record<string, string[]>;
+// }
+// 
+// export const initialState: State = { message: null, errors: {} };
+// 
+// const PAGE_SIZE = 10;
+// 
+// export interface PaginatedMeetings {
+  // meetings: SacramentMeeting[];
+  // page: number;
+  // pageSize: number;
+  // total: number;
+  // totalPages: number;
+  // hasNext: boolean;
+  // hasPrev: boolean;
+// }
+// 
+// export interface GetMeetingsOptions {
+  // date?: string | null;
+  // query?: string | null;
+  // page?: number;
+// }
 
 /* ------------------------------------------------------------------ */
 /* Reads                                                               */
