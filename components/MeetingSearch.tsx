@@ -12,7 +12,7 @@ export default function MeetingSearch() {
     const params = new URLSearchParams(searchParams);
 
     // Any new search starts back at page 1.
-    params.delete('page');
+    params.delete('page', '1');
 
     if (term) {
       params.set('query', term);
@@ -25,6 +25,9 @@ export default function MeetingSearch() {
 
   return (
     <div className="relative">
+      <label htmlFor="meeting-search" className='sr-only'>
+        Search Meeting
+      </label>
       <input
         type="search"
         placeholder="Search by presiding, conducting, or speaker…"
