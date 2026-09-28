@@ -5,9 +5,8 @@ import SpeakersField from './SpeakersField';
 import AnnouncementsField from './AnnouncementsField';
 import WardBusinessField from './WardBusinessField';
 import HymnSelect from './HymnSelect';
-import { Hymn, SacramentMeeting } from '@/lib/types';
+import { Hymn, SacramentMeeting, State } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/schemas';
-import type { State } from '@/lib/meeting-db';
 
 interface Props {
   action: (prevState: State, formData: FormData) => Promise<State>;
