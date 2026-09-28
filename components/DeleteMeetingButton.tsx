@@ -2,11 +2,14 @@
 
 import { deleteMeeting } from "@/lib/meeting-db";
 
-
 export default function DeleteMeetingButton({ id }: { id: number }) {
+  const handleDelete = async (_formData: FormData) => {
+    await deleteMeeting(id);
+  };
+
   return (
     <form
-      action={deleteMeeting.bind(null, id)}
+      action={handleDelete}
       onSubmit={(e) => {
         if (!confirm('Delete this meeting?')) e.preventDefault();
       }}
