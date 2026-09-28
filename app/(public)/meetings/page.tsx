@@ -11,17 +11,25 @@ export default async function MeetingsPage({
   const { page, date, query } = await searchParams;
   const currentPage = Number(page) || 1;
 
-  const {
-    meetings,
-    total,
-    totalPages,
-    hasNext,
-    hasPrev,
-  } = await getMeetings({
+  const result = await getMeetings({
     date: date ?? null,
     query: query ?? null,
     page: currentPage,
   });
+
+  // Handle a failed DB fetch gracefully.
+  if (!result) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold">Meetings</h1>
+        <p className="text-red-600 text-center py-8">
+          Could not load meetings. Please try again later.
+        </p>
+      </div>
+    );
+  }
+
+  const { meetings, total, totalPages, hasNext, hasPrev } = result;
 
   const buildHref = (p: number) => {
     const params = new URLSearchParams();

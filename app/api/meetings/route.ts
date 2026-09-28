@@ -17,12 +17,20 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { meetings } = await getMeetings({
+    const result = await getMeetings({
       date: date ?? null,
       query: query ?? null,
       page,
     });
-    return Response.json(meetings);
+
+    if (!result) {
+      return Response.json(
+        { error: 'Failed to load meetings' },
+        { status: 500 }
+      );
+    }
+
+    return Response.json(result.meetings);
   } catch (err) {
     console.error('GET /api/meetings failed:', err);
     return Response.json({ error: 'Failed to load meetings' }, { status: 500 });

@@ -1,9 +1,9 @@
-import MeetingForm from "@/components/MeetingForm";
-import { getHymns } from "@/lib/hyms-db";
-import { createMeeting } from "@/lib/meeting-db";
+import MeetingForm from '@/components/MeetingForm';
+import { getHymns } from '@/lib/hyms-db';
+import { createMeeting } from '@/lib/meeting-db';
 
 export default async function CreateMeetingPage() {
-  const hymns = await getHymns();
+  const hymns = (await getHymns()) ?? [];
 
   return (
     <main className="p-6">

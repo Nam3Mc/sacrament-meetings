@@ -1,21 +1,29 @@
+'use client';
+
+import { useActionState } from 'react';
 import SpeakersField from './SpeakersField';
 import AnnouncementsField from './AnnouncementsField';
 import WardBusinessField from './WardBusinessField';
 import HymnSelect from './HymnSelect';
 import { Hymn, SacramentMeeting } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/schemas';
+import type { State } from '@/lib/meeting-db';
 
 interface Props {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (prevState: State, formData: FormData) => Promise<State>;
   hymns: Hymn[];
   defaultValues?: SacramentMeeting;
 }
 
+const initialState: State = { message: null, errors: {} };
+
 export default function MeetingForm({ action, hymns, defaultValues }: Props) {
+  const [state, formAction, isPending] = useActionState(action, initialState);
   const dv = defaultValues;
+  const errors = state.errors ?? {};
 
   return (
-    <form action={action} className="space-y-4 max-w-3xl">
+    <form action={formAction} className="space-y-4 max-w-3xl">
       <div>
         <label htmlFor="meeting_date">Date</label>
         <input
@@ -129,8 +137,12 @@ export default function MeetingForm({ action, hymns, defaultValues }: Props) {
       <AnnouncementsField defaultValue={dv?.announcements} />
       <WardBusinessField defaultValue={dv?.wardBusiness} />
 
-      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-        Save
+      <button
+        type="submit"
+        disabled={isPending}
+        className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+      >
+        {isPending ? 'Saving…' : 'Save'}
       </button>
     </form>
   );
