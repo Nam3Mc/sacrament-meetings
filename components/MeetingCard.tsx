@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import type { SacramentMeeting } from '@/lib/types';
+import DeleteMeetingButton from './DeleteMeetingButton';
 
 interface Props {
   meeting: SacramentMeeting;
 }
 
 export default function MeetingCard({ meeting }: Props) {
-
   const dateObj = new Date(`${meeting.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? 'Date TBD'
@@ -20,26 +20,38 @@ export default function MeetingCard({ meeting }: Props) {
   const speakerCount = meeting.speakers?.length ?? 0;
 
   return (
-    <Link
-      href={`/meetings/${meeting.id}`}
-      className="block border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
-    >
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800">
-            {formattedDate}
-          </h3>
+    <div className="relative border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+      {/* The clickable area covers the card, but the action column sits on top of it. */}
+      <Link
+        href={`/meetings/${meeting.id}`}
+        className="absolute inset-0 rounded-lg"
+        aria-label={`View meeting on ${formattedDate}`}
+      />
+
+      <div className="relative flex justify-between items-start pointer-events-none">
+        {/* Left: title + meta */}
+        <div className="pointer-events-auto">
+          <h3 className="text-lg font-semibold text-gray-800">{formattedDate}</h3>
           <p className="text-sm text-gray-500 capitalize">
             {meeting.meetingType} meeting
           </p>
+          <p className="mt-2 text-sm text-gray-600">
+            Presiding: {meeting.presiding}
+          </p>
         </div>
-        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-          {speakerCount} speaker{speakerCount !== 1 ? 's' : ''}
-        </span>
+
+        {/* Right: stacked column — badge on top, button below */}
+        <div className="flex flex-col items-end gap-2">
+          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+            {speakerCount} speaker{speakerCount !== 1 ? 's' : ''}
+          </span>
+
+          {/* Make sure the button is interactive, not swallowed by the overlay Link */}
+          <div className="pointer-events-auto">
+            <DeleteMeetingButton id={meeting.id} />
+          </div>
+        </div>
       </div>
-      <p className="mt-2 text-sm text-gray-600">
-        Presiding: {meeting.presiding}
-      </p>
-    </Link>
+    </div>
   );
 }
