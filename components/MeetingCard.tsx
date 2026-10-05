@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import type { SacramentMeeting } from '@/lib/types';
 import DeleteMeetingButton from './DeleteMeetingButton';
 
@@ -7,6 +10,9 @@ interface Props {
 }
 
 export default function MeetingCard({ meeting }: Props) {
+  const { status } = useSession();
+  const isAuthed = status === 'authenticated';
+
   const dateObj = new Date(`${meeting.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? 'Date TBD'
@@ -40,16 +46,18 @@ export default function MeetingCard({ meeting }: Props) {
           </p>
         </div>
 
-        {/* Right: stacked column — badge on top, button below */}
+        {/* Right: stacked column — badge on top, admin actions below */}
         <div className="flex flex-col items-end gap-2">
           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
             {speakerCount} speaker{speakerCount !== 1 ? 's' : ''}
           </span>
 
-          {/* Make sure the button is interactive, not swallowed by the overlay Link */}
-          <div className="pointer-events-auto">
-            <DeleteMeetingButton id={meeting.id} />
-          </div>
+          {/* Delete is admin-only; hidden from the public list view */}
+          {isAuthed && (
+            <div className="pointer-events-auto">
+              <DeleteMeetingButton id={meeting.id} />
+            </div>
+          )}
         </div>
       </div>
     </div>

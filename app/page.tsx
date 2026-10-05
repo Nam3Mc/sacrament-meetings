@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 export default function Home() {
+
   return (
     <div className="text-center">
       <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden">
