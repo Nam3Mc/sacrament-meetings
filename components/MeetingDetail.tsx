@@ -1,3 +1,4 @@
+// components/MeetingDetail.tsx
 'use client';
 
 import Link from 'next/link';
@@ -27,7 +28,8 @@ function HymnLine({ label, hymn }: { label: string; hymn: Hymn | null }) {
   }
   return (
     <p>
-      <span className="font-semibold">{label}:</span> #{hymn.number} – {hymn.title}
+      <span className="font-semibold">{label}:</span> #{hymn.number} –{' '}
+      {hymn.title}
     </p>
   );
 }
@@ -55,9 +57,10 @@ export default function MeetingDetail({ meeting }: Props) {
 
   return (
     <article className="bg-white border border-gray-200 rounded-lg p-6 print:border-0 print:p-0">
-      {/* Action bar — hidden when printing. Print is public; edit/delete are admin-only. */}
-      <div className="print:hidden mb-4 flex items-center gap-2">
+      {/* Action bar — hidden when printing */}
+      <div className="print:hidden mb-4 flex flex-wrap items-center gap-2">
         <button
+          type="button"
           onClick={() => window.print()}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
         >

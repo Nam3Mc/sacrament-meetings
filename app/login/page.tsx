@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
 import { LoginForm } from '@/components/login-form';
+
+export const metadata: Metadata = {
+  title: 'Sign In | Sacrament Meeting Planner',
+  description: 'Sign in to manage sacrament meetings.',
+};
 
 export default function LoginPage() {
   return (
