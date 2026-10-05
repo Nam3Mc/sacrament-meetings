@@ -9,31 +9,24 @@ import { deleteWardBusinessByMeetingId, getWardBusinessByMeetingId, replaceWardB
 import { AnnouncementSchema, MeetingFormSchema, MeetingInput, parseJsonArray, SpeakerSchema, WardBusinessSchema } from './schemas';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { auth } from '@/auth';
 
-// export interface State {
-  // message: string | null;
-  // errors: Record<string, string[]>;
-// }
-// 
-// export const initialState: State = { message: null, errors: {} };
-// 
-// const PAGE_SIZE = 10;
-// 
-// export interface PaginatedMeetings {
-  // meetings: SacramentMeeting[];
-  // page: number;
-  // pageSize: number;
-  // total: number;
-  // totalPages: number;
-  // hasNext: boolean;
-  // hasPrev: boolean;
-// }
-// 
-// export interface GetMeetingsOptions {
-  // date?: string | null;
-  // query?: string | null;
-  // page?: number;
-// }
+/* ------------------------------------------------------------------ */
+/* Auth guard                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Throws if the current request is not made by an authenticated owner.
+ * Every mutating Server Action must call this first — UI-level hiding is
+ * not enough, since Server Actions can be invoked directly.
+ */
+async function requireOwnerSession() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error('Not authenticated');
+  }
+  return session;
+}
 
 /* ------------------------------------------------------------------ */
 /* Reads                                                               */
@@ -243,6 +236,8 @@ export async function createMeeting(
   prevState: State,
   formData: FormData
 ): Promise<State> {
+  await requireOwnerSession();
+
   const parsed = parseMeetingForm(formData);
   if (!parsed.ok) return parsed.state;
 
@@ -271,7 +266,6 @@ export async function createMeeting(
     };
   }
 
-  // Child tables — each returns State.
   const speakersState = await replaceSpeakers(meetingId, data.speakers);
   if (speakersState.message) return speakersState;
 
@@ -294,6 +288,8 @@ export async function updateMeeting(
   prevState: State,
   formData: FormData
 ): Promise<State> {
+  await requireOwnerSession();
+
   const parsed = parseMeetingForm(formData);
   if (!parsed.ok) return parsed.state;
 
@@ -341,6 +337,8 @@ export async function updateMeeting(
 /* ------------------------------------------------------------------ */
 
 export async function deleteMeeting(id: number): Promise<State> {
+  await requireOwnerSession();
+
   try {
     const speakersState = await deleteSpeakersByMeetingId(id);
     if (speakersState.message) return speakersState;

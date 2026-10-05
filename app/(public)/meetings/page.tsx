@@ -1,7 +1,18 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import MeetingCard from '@/components/MeetingCard';
 import MeetingSearch from '@/components/MeetingSearch';
 import { getMeetings } from '@/lib/meeting-db';
+
+export const metadata: Metadata = {
+  title: 'Meetings | Sacrament Meeting Planner',
+  description:
+    'Browse upcoming sacrament meetings, search by date, and view meeting details.',
+  openGraph: {
+    title: 'Meetings | Sacrament Meeting Planner',
+    description: 'Browse and search upcoming sacrament meetings.',
+  },
+};
 
 export default async function MeetingsPage({
   searchParams,
@@ -17,7 +28,6 @@ export default async function MeetingsPage({
     page: currentPage,
   });
 
-  // Handle a failed DB fetch gracefully.
   if (!result) {
     return (
       <div className="space-y-4">

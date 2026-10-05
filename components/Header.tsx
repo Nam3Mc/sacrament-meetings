@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AuthNav } from '@/components/auth-nav';
 
 export default function Header() {
   const today = new Date();
@@ -22,27 +23,8 @@ export default function Header() {
           <p className="text-sm text-blue-200">{formattedDate}</p>
         </div>
 
-        {/* Right: nav actions */}
-        <nav className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/"
-            className="text-sm bg-blue-800 hover:bg-blue-700 px-3 py-1.5 rounded transition-colors"
-          >
-            Home
-          </Link>
-          <Link
-            href="/meetings"
-            className="text-sm bg-blue-800 hover:bg-blue-700 px-3 py-1.5 rounded transition-colors"
-          >
-            Meetings
-          </Link>
-          <Link
-            href="/meetings/new"
-            className="text-sm bg-white text-blue-900 hover:bg-blue-100 px-3 py-1.5 rounded font-medium transition-colors"
-          >
-            + New Meeting
-          </Link>
-        </nav>
+        {/* Right: nav actions (auth-aware) */}
+        <AuthNav />
       </div>
     </header>
   );

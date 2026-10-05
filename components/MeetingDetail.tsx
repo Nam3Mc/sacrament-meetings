@@ -1,7 +1,10 @@
+// components/MeetingDetail.tsx
 'use client';
 
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import type { Hymn, SacramentMeeting } from '@/lib/types';
+import DeleteMeetingButton from './DeleteMeetingButton';
 
 interface Props {
   meeting: SacramentMeeting;
@@ -25,12 +28,16 @@ function HymnLine({ label, hymn }: { label: string; hymn: Hymn | null }) {
   }
   return (
     <p>
-      <span className="font-semibold">{label}:</span> #{hymn.number} – {hymn.title}
+      <span className="font-semibold">{label}:</span> #{hymn.number} –{' '}
+      {hymn.title}
     </p>
   );
 }
 
 export default function MeetingDetail({ meeting }: Props) {
+  const { status } = useSession();
+  const isAuthed = status === 'authenticated';
+
   const dateObj = new Date(`${meeting.date}T00:00:00`);
   const formattedDate = isNaN(dateObj.getTime())
     ? 'Date TBD'
@@ -51,20 +58,26 @@ export default function MeetingDetail({ meeting }: Props) {
   return (
     <article className="bg-white border border-gray-200 rounded-lg p-6 print:border-0 print:p-0">
       {/* Action bar — hidden when printing */}
-      <div className="print:hidden mb-4 flex items-center gap-2">
+      <div className="print:hidden mb-4 flex flex-wrap items-center gap-2">
         <button
+          type="button"
           onClick={() => window.print()}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
         >
           Print Program
         </button>
 
-        <Link
-          href={`/meetings/${meeting.id}/edit`}
-          className="border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50 transition-colors"
-        >
-          Edit Meeting
-        </Link>
+        {isAuthed && (
+          <>
+            <Link
+              href={`/meetings/${meeting.id}/edit`}
+              className="border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50 transition-colors"
+            >
+              Edit Meeting
+            </Link>
+            <DeleteMeetingButton id={meeting.id} />
+          </>
+        )}
       </div>
 
       <header className="text-center mb-6">

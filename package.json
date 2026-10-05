@@ -9,8 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth/pg-adapter": "^1.11.3",
     "@neondatabase/serverless": "^1.1.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.5",
     "next": "latest",
+    "next-auth": "^5.0.0-beta.32",
     "react": "latest",
     "react-dom": "latest",
     "use-debounce": "^10.1.1",
@@ -22,6 +26,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "tailwindcss": "latest",
+    "tsx": "^4.23.15",
     "typescript": "latest"
   }
 }

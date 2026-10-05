@@ -79,3 +79,10 @@ export interface GetMeetingsOptions {
   query?: string | null;
   page?: number;
 }
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  passwordHash: string;
+}
